@@ -45,6 +45,20 @@ def create_tables():
     """
     )
 
+    # Tabela de relatórios
+    cursor.execute(
+        """
+    CREATE TABLE IF NOT EXISTS relatorios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        detalhes TEXT NOT NULL,
+        tipo TEXT NOT NULL,
+        FOREIGN KEY(cliente_id) REFERENCES clientes(numero_cliente)
+    )
+    """
+    )
+
     conn.commit()
     conn.close()
 
@@ -108,8 +122,35 @@ def insert_venda(data):
         conn.close()
 
 
+def insert_report(data):
+    """Insere um novo relatório na tabela."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        # Verifica se cliente_id está preenchido
+        if not data["cliente_id"]:
+            raise ValueError("cliente_id não pode estar vazio!")
+
+        cursor.execute(
+            """
+            INSERT INTO relatorios (
+                cliente_id, data, detalhes, tipo
+            ) VALUES (?, ?, ?, ?)
+        """,
+            (
+                data["cliente_id"],
+                data["data"],
+                data["detalhes"],
+                data["tipo"],
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_clientes():
-    """Obtém a lista de clientes."""
+    """Obtém uma lista de clientes com IDs e nomes."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT numero_cliente, name FROM clientes")
