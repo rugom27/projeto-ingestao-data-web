@@ -121,7 +121,7 @@ if houve_venda == "Sim":
 
     quantidade = st.number_input("Quantidade Vendida", min_value=1, step=1)
     valor_manual = st.number_input("Valor Vendido (Manual)", min_value=0.0, format="%.2f")
-    valor_calculado = quantidade * 10.0  # Exemplo de cálculo automático (substituir pelo valor real do produto)
+    valor_calculado = quantidade * valor_manual 
     st.text(f"Valor calculado (sugestão): {valor_calculado:.2f} EUR")
 
 elif houve_venda == "Não":
