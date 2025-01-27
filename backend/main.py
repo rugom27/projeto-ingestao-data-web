@@ -66,14 +66,13 @@ async def listar_reunioes(cliente_id: int):
     try:
         cursor.execute("SELECT * FROM reunioes WHERE cliente_id = %s", (cliente_id,))
         reunioes = cursor.fetchall()
-        if not reunioes:
+        if len(reunioes) == 0:  # Verificar explicitamente o comprimento
             return {"message": "Não existem reuniões para este cliente."}
         return reunioes
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar reuniões: {e}")
-    finally:
-        cursor.close()
-        conn.close()
+
+
 
 # Endpoint para inserir reunião
 @app.post("/reunioes")

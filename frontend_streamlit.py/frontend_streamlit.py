@@ -129,31 +129,42 @@ elif houve_venda == "Não":
 
 st.header("Submeter Dados")
 if st.button("Registar Reunião"):
-    reuniao_data = {
-        "cliente_id": cliente_id,
-        "data_reuniao": str(data_reuniao),
-        "descricao": descricao_reuniao,
-        "houve_venda": houve_venda,
-    }
+    if cliente_id is None:
+        st.error("Por favor, selecione um cliente antes de registrar a reunião.")
+    else:
+        reuniao_data = {
+            "cliente_id": cliente_id,
+            "data_reuniao": str(data_reuniao),
+            "descricao": descricao_reuniao,
+            "houve_venda": houve_venda,
+        }
 
-    if houve_venda == "Sim":
-        reuniao_data.update({
-            "produto_id": produto_id,
-            "quantidade_vendida": quantidade,
-            "preco_vendido": valor_manual,
-            "razao_nao_venda": None,
-        })
-    elif houve_venda == "Não":
-        reuniao_data.update({
-            "produto_id": None,
-            "quantidade_vendida": None,
-            "preco_vendido": None,
-            "razao_nao_venda": razao_nao_venda,
-        })
+        if houve_venda == "Sim":
+            if produto_id is None or quantidade <= 0 or valor_manual <= 0:
+                st.error("Por favor, preencha todos os campos relacionados à venda.")
+            else:
+                reuniao_data.update({
+                    "produto_id": produto_id,
+                    "quantidade_vendida": quantidade,
+                    "preco_vendido": valor_manual,
+                    "razao_nao_venda": None,
+                })
+        elif houve_venda == "Não":
+            if not razao_nao_venda.strip():
+                st.error("Por favor, preencha a razão pela qual não houve venda.")
+            else:
+                reuniao_data.update({
+                    "produto_id": None,
+                    "quantidade_vendida": None,
+                    "preco_vendido": None,
+                    "razao_nao_venda": razao_nao_venda,
+                })
 
-    try:
-        response = requests.post(f"{BACKEND_URL}/reunioes", json=reuniao_data)
-        response.raise_for_status()
-        st.success("Reunião registrada com sucesso!")
-    except requests.exceptions.RequestException as e:
-        st.error(f"Erro ao registrar reunião: {e}")
+        # Enviar somente se todos os dados forem válidos
+        try:
+            response = requests.post(f"{BACKEND_URL}/reunioes", json=reuniao_data)
+            response.raise_for_status()
+            st.success("Reunião registrada com sucesso!")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Erro ao registrar reunião: {e}")
+
