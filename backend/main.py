@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 import os
 
@@ -24,7 +24,21 @@ def get_db_connection():
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao conectar à base de dados: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao conetar à base de dados: {e}")
+
+# Modelo de dados para o cliente
+class ClienteData(BaseModel):
+    name: str
+    numero_cliente: Optional[str] = None
+    cod_postal: str
+    tipo_cliente: str
+    distrito: str
+    latitude: float
+    longitude: float
+
+# Modelo de dados para o produto
+class ProdutoData(BaseModel):
+    ref: str
 
 # Modelo de dados para a reunião
 class ReuniaoData(BaseModel):
@@ -32,52 +46,97 @@ class ReuniaoData(BaseModel):
     data_reuniao: str
     descricao: str
     houve_venda: str
-    produto_id: int = None
-    quantidade_vendida: int = None
-    preco_vendido: float = None
-    razao_nao_venda: str = None
+    produto_id: Optional[int] = None
+    quantidade_vendida: Optional[int] = None
+    preco_vendido: Optional[float] = None
+    razao_nao_venda: Optional[str] = None
 
-# Modelo de dados para o produto
-class ProdutoData(BaseModel):
-    ref: str
-
-# Endpoint para listar clientes
+# Endpoint para listar clientes com paginação
 @app.get("/clientes")
-async def listar_clientes():
+async def listar_clientes(skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100)):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, name FROM clientes")
+        cursor.execute("SELECT id, name FROM clientes ORDER BY id LIMIT %s OFFSET %s", (limit, skip))
         clientes = cursor.fetchall()
-        if not clientes:
-            return {"message": "Nenhum cliente encontrado."}
         return clientes
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao procurar clientes: {e}")
     finally:
         cursor.close()
         conn.close()
 
-# Endpoint para listar reuniões
-@app.get("/reunioes")
-async def listar_reunioes(cliente_id: int):
+# Endpoint para adicionar novo cliente
+@app.post("/clientes")
+async def adicionar_cliente(cliente: ClienteData):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM reunioes WHERE cliente_id = %s", (cliente_id,))
-        reunioes = cursor.fetchall()
-        if not reunioes:
-            return {"message": "Não existem reuniões para este cliente."}
-        return reunioes
+        cursor.execute(
+            """
+            INSERT INTO clientes (name, numero_cliente, cod_postal, tipo_cliente, distrito, latitude, longitude)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (cliente.name, cliente.numero_cliente, cliente.cod_postal, cliente.tipo_cliente, cliente.distrito, cliente.latitude, cliente.longitude)
+        )
+        conn.commit()
+        novo_cliente_id = cursor.fetchone()["id"]
+        return {"id": novo_cliente_id, "message": "Cliente adicionado com sucesso!"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar reuniões: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao adicionar cliente: {e}")
     finally:
         cursor.close()
         conn.close()
 
-# Endpoint para inserir reunião
+# Endpoint para listar produtos com paginação
+@app.get("/produtos")
+async def listar_produtos(skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT produto_id AS id, ref FROM produtos ORDER BY produto_id LIMIT %s OFFSET %s", (limit, skip))
+        produtos = cursor.fetchall()
+        return produtos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao procurar produtos: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# Endpoint para adicionar novo produto
+@app.post("/produtos")
+async def adicionar_produto(produto: ProdutoData):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO produtos (ref)
+            VALUES (%s)
+            RETURNING produto_id
+            """,
+            (produto.ref,)
+        )
+        conn.commit()
+        novo_produto_id = cursor.fetchone()["produto_id"]
+        return {"id": novo_produto_id, "message": "Produto adicionado com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao adicionar produto: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# Endpoint para adicionar reunião
 @app.post("/reunioes")
 async def inserir_reuniao(reuniao: ReuniaoData):
+    if not reuniao.cliente_id:
+        raise HTTPException(status_code=422, detail="cliente_id é obrigatório.")
+    if not reuniao.data_reuniao:
+        raise HTTPException(status_code=422, detail="data_reuniao é obrigatória.")
+    if not reuniao.descricao:
+        raise HTTPException(status_code=422, detail="descricao é obrigatória.")
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -99,44 +158,6 @@ async def inserir_reuniao(reuniao: ReuniaoData):
         )
         conn.commit()
         return {"message": "Reunião registrada com sucesso!"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        conn.close()
-
-# Endpoint para listar produtos
-@app.get("/produtos")
-async def listar_produtos():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT produto_id AS id, ref FROM produtos")
-        produtos = cursor.fetchall()
-        if not produtos:
-            return {"message": "Nenhum produto encontrado."}
-        return produtos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar produtos: {e}")
-    finally:
-        cursor.close()
-        conn.close()
-
-# Endpoint para inserir produto
-@app.post("/produtos")
-async def inserir_produto(produto: ProdutoData):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            """
-            INSERT INTO produtos (ref)
-            VALUES (%s)
-            """,
-            (produto.ref,)
-        )
-        conn.commit()
-        return {"message": "Produto registrado com sucesso!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
