@@ -149,6 +149,22 @@ async def listar_produtos():
         conn.close()
 
 
+# Endpoint para listar reunioes
+@app.get("/reunioes")
+async def listar_reunioes(cliente_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM reunioes WHERE cliente_id = %s", (cliente_id,))
+        reunioes = cursor.fetchall()
+        return reunioes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar reuniões: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+
 # Endpoint para inserir reunião
 @app.post("/reunioes")
 async def inserir_reuniao(reuniao: ReuniaoData):

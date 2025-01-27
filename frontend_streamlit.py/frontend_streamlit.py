@@ -25,7 +25,7 @@ if clientes:
     # Buscar reuniões anteriores do cliente
     if cliente_id:
         try:
-            reunioes_response = requests.get(f"{BACKEND_URL}/reunioes?cliente_id={cliente_id}")
+            reunioes_response = requests.get(f"{BACKEND_URL}/reunioes", params={"cliente_id": cliente_id})
             reunioes_response.raise_for_status()
             reunioes = reunioes_response.json()
             if reunioes:
