@@ -86,7 +86,7 @@ if novo_produto:
 
 quantidade = st.number_input("Quantidade Vendida", min_value=1, step=1)
 valor_manual = st.number_input("Valor Vendido (Manual)", min_value=0.0, format="%.2f")
-valor_calculado = quantidade * 10.0  # Exemplo de cálculo automático (substituir pelo valor real do produto)
+valor_calculado = quantidade * valor_manual  # Exemplo de cálculo automático (substituir pelo valor real do produto)
 st.text(f"Valor calculado (sugestão): {valor_calculado:.2f} EUR")
 
 # Submeter Reunião e Venda
