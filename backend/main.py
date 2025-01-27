@@ -109,6 +109,7 @@ async def inserir_reuniao(reuniao: ReuniaoData):
         cursor.close()
         conn.close()
 
+
 # Endpoint para listar produtos
 @app.get("/produtos")
 async def listar_produtos():
