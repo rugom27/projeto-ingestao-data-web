@@ -1,0 +1,13 @@
+# Ignorar arquivos de configuração local
+.env
+
+# Ignorar pastas do sistema
+__pycache__/
+*.pyc
+
+# Ignorar configurações de IDEs
+.vscode/
+.idea/
+
+# Ignorar create tables 
+.create_tables.sql
