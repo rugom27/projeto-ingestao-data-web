@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import time
 
 # URL do backend
 BACKEND_URL = "https://projeto-ingestao-data-web.onrender.com"
@@ -7,17 +8,33 @@ BACKEND_URL = "https://projeto-ingestao-data-web.onrender.com"
 # Título da aplicação
 st.title("Gestão de Reuniões e Vendas")
 
-# Passo 1: Seleção ou Registo de Cliente
-st.header("Cliente")
-try:
-    response = requests.get(f"{BACKEND_URL}/clientes")
-    response.raise_for_status()
-    clientes = response.json()
-except requests.exceptions.RequestException as e:
-    st.error(f"Erro ao buscar clientes: {e}")
-    clientes = []
+# Placeholder para mensagens
+status_placeholder = st.empty()
 
-cliente_id = None
+# Função para carregar dados com barra de progresso
+def fetch_data_with_progress(endpoint):
+    status_placeholder.text("Carregando dados...")
+    progress_bar = st.progress(0)
+    
+    try:
+        response = requests.get(f"{BACKEND_URL}/{endpoint}")
+        response.raise_for_status()
+        data = response.json()
+        for percent in range(1, 101):
+            time.sleep(0.01)  # Simular carregamento
+            progress_bar.progress(percent)
+        status_placeholder.text("Dados carregados com sucesso!")
+        return data
+    except requests.exceptions.RequestException as e:
+        status_placeholder.text(f"Erro ao carregar dados: {e}")
+        return []
+
+# Carregar dados de clientes e reuniões
+clientes = fetch_data_with_progress("clientes")
+reunioes = fetch_data_with_progress("reunioes")
+
+# Exibir dados carregados
+st.header("Clientes")
 if clientes:
     cliente_options = {cliente["id"]: cliente["name"] for cliente in clientes}
     cliente_id = st.selectbox("Selecione o cliente", options=cliente_options.keys(), format_func=lambda x: cliente_options[x])
@@ -27,14 +44,16 @@ if clientes:
         try:
             reunioes_response = requests.get(f"{BACKEND_URL}/reunioes?cliente_id={cliente_id}")
             reunioes_response.raise_for_status()
-            reunioes = reunioes_response.json()
-            if reunioes:
+            reunioes_cliente = reunioes_response.json()
+            if reunioes_cliente:
                 st.subheader("Reuniões anteriores do cliente")
-                st.table(reunioes)
+                st.table(reunioes_cliente)
             else:
                 st.info("Este cliente não tem reuniões registradas.")
         except requests.exceptions.RequestException as e:
             st.error(f"Erro ao buscar reuniões: {e}")
+else:
+    st.info("Nenhum cliente disponível.")
 
 novo_cliente = st.checkbox("Cliente novo?")
 if novo_cliente:
@@ -65,7 +84,6 @@ if novo_cliente:
             except requests.exceptions.RequestException as e:
                 st.error(f"Erro ao registar cliente: {e}")
 
-# Passo 2: Descrição da Reunião
 st.header("Reunião")
 data_reuniao = st.date_input("Data da Reunião")
 descricao_reuniao = st.text_area("Descrição da Reunião")
@@ -74,7 +92,6 @@ descricao_reuniao = st.text_area("Descrição da Reunião")
 houve_venda = st.radio("Foi feita uma venda?", ("Sim", "Não"))
 
 if houve_venda == "Sim":
-    # Passo 3: Produto Vendido e Quantidade
     st.header("Venda")
     try:
         response = requests.get(f"{BACKEND_URL}/produtos")
@@ -110,7 +127,6 @@ if houve_venda == "Sim":
 elif houve_venda == "Não":
     razao_nao_venda = st.text_area("Razão pela qual não houve venda")
 
-# Submeter Reunião
 st.header("Submeter Dados")
 if st.button("Registar Reunião"):
     reuniao_data = {
