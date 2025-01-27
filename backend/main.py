@@ -148,5 +148,3 @@ async def inserir_reuniao(reuniao: ReuniaoData):
         cursor.close()
         conn.close()
 
-# Executar a carga de dados ao iniciar o backend
-carregar_dados()
