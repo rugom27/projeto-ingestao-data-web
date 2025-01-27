@@ -122,22 +122,30 @@ def carregar_dados():
 async def listar_clientes():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name FROM clientes")
-    clientes = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return clientes
+    try:
+        cursor.execute("SELECT id, name FROM clientes")
+        clientes = cursor.fetchall()
+        return clientes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 # Endpoint para listar produtos
 @app.get("/produtos")
 async def listar_produtos():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, ref FROM produtos")
-    produtos = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return produtos
+    try:
+        cursor.execute("SELECT produto_id AS id, ref FROM produtos")
+        produtos = cursor.fetchall()
+        return produtos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar produtos: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 # Endpoint para inserir reunião
 @app.post("/reunioes")
@@ -180,3 +188,4 @@ async def inserir_produto(produto: ProdutoData):
     finally:
         cursor.close()
         conn.close()
+
