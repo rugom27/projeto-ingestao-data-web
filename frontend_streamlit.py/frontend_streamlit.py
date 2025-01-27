@@ -8,7 +8,7 @@ BACKEND_URL = "https://projeto-ingestao-data-web.onrender.com"
 st.title("Gestão de Reuniões e Vendas")
 
 # Passo 1: Seleção ou Registo de Cliente
-st.header("Passo 1: Cliente")
+st.header("Cliente")
 try:
     response = requests.get(f"{BACKEND_URL}/clientes")
     response.raise_for_status()
@@ -66,7 +66,7 @@ if novo_cliente:
                 st.error(f"Erro ao registar cliente: {e}")
 
 # Passo 2: Descrição da Reunião
-st.header("Passo 2: Reunião")
+st.header("Reunião")
 data_reuniao = st.date_input("Data da Reunião")
 descricao_reuniao = st.text_area("Descrição da Reunião")
 
@@ -89,6 +89,18 @@ if houve_venda == "Sim":
         produto_id = st.selectbox("Selecione o Produto", options=produto_options.keys(), format_func=lambda x: produto_options[x])
     else:
         produto_id = None
+
+    novo_produto = st.checkbox("Adicionar novo produto?")
+    if novo_produto:
+        novo_produto_nome = st.text_input("Nome do novo produto")
+        if st.button("Adicionar Produto"):
+            produto_data = {"ref": novo_produto_nome}
+            try:
+                response = requests.post(f"{BACKEND_URL}/produtos", json=produto_data)
+                response.raise_for_status()
+                st.success("Produto adicionado com sucesso!")
+            except requests.exceptions.RequestException as e:
+                st.error(f"Erro ao adicionar produto: {e}")
 
     quantidade = st.number_input("Quantidade Vendida", min_value=1, step=1)
     valor_manual = st.number_input("Valor Vendido (Manual)", min_value=0.0, format="%.2f")
