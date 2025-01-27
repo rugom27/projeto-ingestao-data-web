@@ -21,7 +21,7 @@ def fetch_data_with_progress(endpoint):
         response.raise_for_status()
         data = response.json()
         for percent in range(1, 101):
-            time.sleep(0.01)  # Simular carregamento
+            time.sleep(0.05)  # Simular carregamento
             progress_bar.progress(percent)
         status_placeholder.text("Dados carregados com sucesso!")
         return data
