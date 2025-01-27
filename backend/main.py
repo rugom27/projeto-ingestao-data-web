@@ -33,6 +33,10 @@ class ReuniaoData(BaseModel):
     data_reuniao: str
     descricao: str
 
+# Modelo de dados para o produto
+class ProdutoData(BaseModel):
+    ref: str
+
 def carregar_dados():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -113,9 +117,6 @@ def carregar_dados():
         cursor.close()
         conn.close()
 
-
-
-
 # Endpoint para listar clientes
 @app.get("/clientes")
 async def listar_clientes():
@@ -126,6 +127,17 @@ async def listar_clientes():
     cursor.close()
     conn.close()
     return clientes
+
+# Endpoint para listar produtos
+@app.get("/produtos")
+async def listar_produtos():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, ref FROM produtos")
+    produtos = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return produtos
 
 # Endpoint para inserir reunião
 @app.post("/reunioes")
@@ -148,3 +160,23 @@ async def inserir_reuniao(reuniao: ReuniaoData):
         cursor.close()
         conn.close()
 
+# Endpoint para inserir produto
+@app.post("/produtos")
+async def inserir_produto(produto: ProdutoData):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO produtos (ref)
+            VALUES (%s)
+            """,
+            (produto.ref,)
+        )
+        conn.commit()
+        return {"message": "Produto registrado com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
