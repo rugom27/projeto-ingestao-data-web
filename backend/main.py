@@ -41,6 +41,23 @@ class ReuniaoData(BaseModel):
 class ProdutoData(BaseModel):
     ref: str
 
+# Endpoint para listar clientes
+@app.get("/clientes")
+async def listar_clientes():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id, name FROM clientes")
+        clientes = cursor.fetchall()
+        if not clientes:
+            return {"message": "Nenhum cliente encontrado."}
+        return clientes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
 # Endpoint para listar reuniões
 @app.get("/reunioes")
 async def listar_reunioes(cliente_id: int):
