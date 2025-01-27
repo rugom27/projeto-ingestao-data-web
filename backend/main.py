@@ -135,17 +135,19 @@ async def listar_clientes():
 # Endpoint para listar produtos
 @app.get("/produtos")
 async def listar_produtos():
-    conn = get_db_connection()
-    cursor = conn.cursor()
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
         cursor.execute("SELECT produto_id AS id, ref FROM produtos")
         produtos = cursor.fetchall()
         return produtos
     except Exception as e:
+        print(f"Erro ao buscar produtos: {e}")  # Log do erro
         raise HTTPException(status_code=500, detail=f"Erro ao buscar produtos: {e}")
     finally:
         cursor.close()
         conn.close()
+
 
 # Endpoint para inserir reunião
 @app.post("/reunioes")
