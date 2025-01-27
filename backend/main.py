@@ -58,27 +58,22 @@ async def listar_clientes():
         cursor.close()
         conn.close()
 
+# Listar reunioes
 @app.get("/reunioes")
 async def listar_reunioes(cliente_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # Verificar se o cliente existe
-        cursor.execute("SELECT id FROM clientes WHERE id = %s", (cliente_id,))
-        cliente_existe = cursor.fetchone()
-        if not cliente_existe:
-            return {"message": "Cliente não encontrado."}
-
-        # Buscar reuniões do cliente
-        cursor.execute("SELECT id, data_reuniao, descricao, houve_venda FROM reunioes WHERE cliente_id = %s", (cliente_id,))
+        if not cliente_id:
+            raise HTTPException(status_code=400, detail="O parâmetro cliente_id é obrigatório.")
+        
+        cursor.execute("SELECT * FROM reunioes WHERE cliente_id = %s", (cliente_id,))
         reunioes = cursor.fetchall()
-        if len(reunioes) == 0:
+        if not reunioes:
             return {"message": "Não existem reuniões para este cliente."}
         return reunioes
-    except psycopg2.Error as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao executar consulta no banco de dados: {e}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro inesperado: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar reuniões: {e}")
     finally:
         cursor.close()
         conn.close()
