@@ -12,12 +12,12 @@ st.title("Gestão de Reuniões e Vendas")
 status_placeholder = st.empty()
 
 # Função para carregar dados com barra de progresso
-def fetch_data_with_progress(endpoint, params=None):
+def fetch_data_with_progress(endpoint):
     status_placeholder.text("Carregando dados...")
     progress_bar = st.progress(0)
     
     try:
-        response = requests.get(f"{BACKEND_URL}/{endpoint}", params=params)
+        response = requests.get(f"{BACKEND_URL}/{endpoint}")
         response.raise_for_status()
         data = response.json()
         for percent in range(1, 101):
@@ -29,26 +29,8 @@ def fetch_data_with_progress(endpoint, params=None):
         status_placeholder.text(f"Erro ao carregar dados: {e}")
         return []
 
-# Carregar dados de clientes
+# Carregar dados de clientes e reuniões
 clientes = fetch_data_with_progress("clientes")
-
-# Inicializar dados de reuniões
-reunioes = []
-
-# Se clientes estiverem disponíveis, carregar reuniões
-if clientes:
-    cliente_options = {cliente["id"]: cliente["name"] for cliente in clientes}
-    cliente_id = st.selectbox(
-        "Selecione o cliente",
-        options=cliente_options.keys(),
-        format_func=lambda x: cliente_options[x]
-    )
-    
-    if cliente_id:
-        reunioes = fetch_data_with_progress("reunioes", params={"cliente_id": cliente_id})
-else:
-    st.info("Nenhum cliente disponível.")
-
 
 # Exibir dados carregados
 st.header("Clientes")
@@ -68,7 +50,7 @@ if clientes:
             else:
                 st.info("Este cliente não tem reuniões registradas.")
         except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao buscar reuniões: {e}")
+            st.error(f"Erro ao procurar reuniões: {e}")
 else:
     st.info("Nenhum cliente disponível.")
 
