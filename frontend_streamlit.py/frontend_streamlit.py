@@ -1,122 +1,190 @@
-import streamlit as st
-import requests
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import pandas as pd
+from typing import List
+from dotenv import load_dotenv
+import os
 
-# URL do backend
-BACKEND_URL = "https://projeto-ingestao-data-web.onrender.com"
+# Carregar variáveis do .env
+load_dotenv()
 
-# Título da aplicação
-st.title("Gestão de Reuniões e Vendas")
+# Obter a URL da base de dados do arquivo .env
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Passo 1: Seleção ou Registo de Cliente
-st.header("Passo 1: Cliente")
-try:
-    response = requests.get(f"{BACKEND_URL}/clientes")
-    response.raise_for_status()
-    clientes = response.json()
-except requests.exceptions.RequestException as e:
-    st.error(f"Erro ao buscar clientes: {e}")
-    clientes = []
+if not DATABASE_URL:
+    raise RuntimeError("A variável de ambiente DATABASE_URL não está configurada no .env ou no ambiente.")
 
-cliente_id = None
-if clientes:
-    cliente_options = {cliente["id"]: cliente["name"] for cliente in clientes}
-    cliente_id = st.selectbox("Selecione o cliente", options=cliente_options.keys(), format_func=lambda x: cliente_options[x])
+# Inicializar o FastAPI
+app = FastAPI()
 
-novo_cliente = st.checkbox("Cliente novo?")
-if novo_cliente:
-    with st.form("novo_cliente_form"):
-        name = st.text_input("Nome do Cliente", max_chars=100)
-        numero_cliente = st.text_input("Número do Cliente (Opcional)")
-        cod_postal = st.text_input("Código Postal")
-        tipo_cliente = st.text_input("Tipo de Cliente")
-        distrito = st.text_input("Distrito")
-        latitude = st.number_input("Latitude", format="%.6f")
-        longitude = st.number_input("Longitude", format="%.6f")
-        submit_cliente = st.form_submit_button("Registar Cliente")
+# Conexão com a base de dados
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        return conn
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao conectar à base de dados: {e}")
 
-        if submit_cliente:
-            cliente_data = {
-                "name": name,
-                "numero_cliente": numero_cliente or None,
-                "cod_postal": cod_postal,
-                "tipo_cliente": tipo_cliente,
-                "distrito": distrito,
-                "latitude": latitude,
-                "longitude": longitude,
-            }
+# Modelo de dados para a reunião
+class ReuniaoData(BaseModel):
+    cliente_id: int
+    data_reuniao: str
+    descricao: str
+
+# Modelo de dados para o produto
+class ProdutoData(BaseModel):
+    ref: str
+
+def carregar_dados():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Carregar e preparar dados de clientes
+        clientes_df = pd.read_csv("data/clientes.csv")
+        clientes_df = clientes_df.rename(columns={
+            "Name": "name",
+            "Numero Cliente": "numero_cliente",
+            "Cód-Postal": "cod_postal",
+            "Tipo de Cliente": "tipo_cliente",
+            "Cultura": "cultura",
+            "Área das culturas": "area_culturas",
+            "Responsável_principal": "responsavel_principal",
+            "Responsável_secundário": "responsavel_secundario",
+            "Distrito": "distrito",
+            "latitude": "latitude",
+            "longitude": "longitude"
+        })
+        clientes_df = clientes_df.drop(columns=[col for col in clientes_df.columns if "Unnamed" in col])
+        clientes_df = clientes_df.where(pd.notnull(clientes_df), None)
+
+        # Inserir dados de clientes no banco
+        for _, row in clientes_df.iterrows():
+            data = tuple(row.values)  # Certificar-se de que os dados sejam uma tupla
             try:
-                response = requests.post(f"{BACKEND_URL}/clientes", json=cliente_data)
-                response.raise_for_status()
-                st.success("Cliente registado com sucesso!")
-            except requests.exceptions.RequestException as e:
-                st.error(f"Erro ao registar cliente: {e}")
+                print(f"Inserindo cliente: {data}")  # Debug para verificar os dados
+                cursor.execute(
+                    """
+                    INSERT INTO clientes (name, numero_cliente, cod_postal, tipo_cliente, cultura, area_culturas, responsavel_principal, responsavel_secundario, distrito, latitude, longitude)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    data
+                )
+            except Exception as e:
+                print(f"Erro ao inserir cliente: {data}. Detalhes: {e}")
+                conn.rollback()  # Rollback em caso de erro
 
-# Passo 2: Descrição da Reunião
-st.header("Passo 2: Reunião")
-data_reuniao = st.date_input("Data da Reunião")
-descricao_reuniao = st.text_area("Descrição da Reunião")
+        # Carregar e preparar dados de vendas
+        vendas_df = pd.read_csv("data/vendas.csv")
+        vendas_df = vendas_df.rename(columns={
+            "Indice": "indice",
+            "nome": "nome",
+            "ref": "ref",
+            "design": "design",
+            "Data": "data",
+            "Quant": "quant",
+            "Eur": "eur",
+            "numero_de_cliente": "numero_de_cliente"
+        })
+        vendas_df = vendas_df.where(pd.notnull(vendas_df), None)
 
-# Passo 3: Produto Vendido e Quantidade
-st.header("Passo 3: Venda")
-try:
-    response = requests.get(f"{BACKEND_URL}/produtos")
-    response.raise_for_status()
-    produtos = response.json()
-except requests.exceptions.RequestException as e:
-    st.error(f"Erro ao buscar produtos: {e}")
-    produtos = []
+        # Inserir dados de vendas no banco
+        for _, row in vendas_df.iterrows():
+            data = tuple(row.values)  # Certificar-se de que os dados sejam uma tupla
+            try:
+                print(f"Inserindo venda: {data}")  # Debug para verificar os dados
+                cursor.execute(
+                    """
+                    INSERT INTO vendas (indice, nome, ref, design, data, quant, eur, numero_de_cliente)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    data
+                )
+            except Exception as e:
+                print(f"Erro ao inserir venda: {data}. Detalhes: {e}")
+                conn.rollback()  # Rollback em caso de erro
 
-if produtos:
-    produto_options = {produto["id"]: produto["ref"] for produto in produtos}
-    produto_id = st.selectbox("Selecione o Produto", options=produto_options.keys(), format_func=lambda x: produto_options[x])
-else:
-    produto_id = None
+        # Confirmar as alterações no banco de dados
+        conn.commit()
+        print("Carga de dados concluída com sucesso!")
 
-novo_produto = st.checkbox("Adicionar novo produto?")
-if novo_produto:
-    novo_produto_nome = st.text_input("Nome do novo produto")
-    if st.button("Adicionar Produto"):
-        produto_data = {"ref": novo_produto_nome}
-        try:
-            response = requests.post(f"{BACKEND_URL}/produtos", json=produto_data)
-            response.raise_for_status()
-            st.success("Produto adicionado com sucesso!")
-        except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao adicionar produto: {e}")
+    except Exception as e:
+        print(f"Erro durante a carga de dados: {e}")
+        conn.rollback()  # Rollback em caso de erro
+    finally:
+        cursor.close()
+        conn.close()
 
-quantidade = st.number_input("Quantidade Vendida", min_value=1, step=1)
-valor_manual = st.number_input("Valor Vendido (Manual)", min_value=0.0, format="%.2f")
-valor_calculado = quantidade * 10.0  # Exemplo de cálculo automático (substituir pelo valor real do produto)
-st.text(f"Valor calculado (sugestão): {valor_calculado:.2f} EUR")
+# Endpoint para listar clientes
+@app.get("/clientes")
+async def listar_clientes():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id, name FROM clientes")
+        clientes = cursor.fetchall()
+        return clientes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
-# Submeter Reunião e Venda
-st.header("Submeter Dados")
-if st.button("Registar Reunião e Venda"):
-    if cliente_id and data_reuniao and descricao_reuniao and produto_id and quantidade:
-        # Enviar dados da reunião
-        reuniao_data = {
-            "cliente_id": cliente_id,
-            "data_reuniao": str(data_reuniao),
-            "descricao": descricao_reuniao,
-        }
-        try:
-            response_reuniao = requests.post(f"{BACKEND_URL}/reunioes", json=reuniao_data)
-            response_reuniao.raise_for_status()
-            st.success("Reunião registada com sucesso!")
-        except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao registar reunião: {e}")
+# Endpoint para listar produtos
+@app.get("/produtos")
+async def listar_produtos():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT produto_id AS id, ref FROM produtos")
+        produtos = cursor.fetchall()
+        return produtos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar produtos: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
-        # Enviar dados da venda
-        venda_data = {
-            "produto_id": produto_id,
-            "quantidade": quantidade,
-            "valor_vendido": valor_manual,
-        }
-        try:
-            response_venda = requests.post(f"{BACKEND_URL}/vendas", json=venda_data)
-            response_venda.raise_for_status()
-            st.success("Venda registada com sucesso!")
-        except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao registar venda: {e}")
-    else:
-        st.warning("Por favor, preencha todos os campos antes de submeter.")
+# Endpoint para inserir reunião
+@app.post("/reunioes")
+async def inserir_reuniao(reuniao: ReuniaoData):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO reunioes (cliente_id, data_reuniao, descricao)
+            VALUES (%s, %s, %s)
+            """,
+            (reuniao.cliente_id, reuniao.data_reuniao, reuniao.descricao)
+        )
+        conn.commit()
+        return {"message": "Reunião registrada com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# Endpoint para inserir produto
+@app.post("/produtos")
+async def inserir_produto(produto: ProdutoData):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO produtos (ref)
+            VALUES (%s)
+            """,
+            (produto.ref,)
+        )
+        conn.commit()
+        return {"message": "Produto registrado com sucesso!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
