@@ -93,7 +93,7 @@ async def listar_reunioes(cliente_id: int):
 # Endpoint para inserir reunião
 @app.post("/reunioes")
 async def inserir_reuniao(reuniao: ReuniaoData):
-    print(reuniao)
+    print(reuniao.cliente_id)
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
