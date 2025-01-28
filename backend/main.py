@@ -13,10 +13,13 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise RuntimeError("A variável de ambiente DATABASE_URL não está configurada no .env ou no ambiente.")
+    raise RuntimeError(
+        "A variável de ambiente DATABASE_URL não está configurada no .env ou no ambiente."
+    )
 
 # Inicializar o FastAPI
 app = FastAPI()
+
 
 # Conexão com a base de dados
 def get_db_connection():
@@ -24,7 +27,10 @@ def get_db_connection():
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao conectar à base de dados: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao conectar à base de dados: {e}"
+        )
+
 
 # Modelo de dados para a reunião
 class ReuniaoData(BaseModel):
@@ -37,9 +43,11 @@ class ReuniaoData(BaseModel):
     preco_vendido: float = None
     razao_nao_venda: str = None
 
+
 # Modelo de dados para o produto
 class ProdutoData(BaseModel):
     ref: str
+
 
 # Endpoint para listar clientes
 @app.get("/clientes")
@@ -53,10 +61,11 @@ async def listar_clientes():
             return {"message": "Nenhum cliente encontrado."}
         return clientes
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao procurar clientes: {e}")
     finally:
         cursor.close()
         conn.close()
+
 
 # Listar reunioes
 @app.get("/reunioes")
@@ -65,15 +74,17 @@ async def listar_reunioes(cliente_id: int):
     cursor = conn.cursor()
     try:
         if not cliente_id:
-            raise HTTPException(status_code=400, detail="O parâmetro cliente_id é obrigatório.")
-        
+            raise HTTPException(
+                status_code=400, detail="O parâmetro cliente_id é obrigatório."
+            )
+
         cursor.execute("SELECT * FROM reunioes WHERE cliente_id = %s", (cliente_id,))
         reunioes = cursor.fetchall()
         if not reunioes:
             return {"message": "Não existem reuniões para este cliente."}
         return reunioes
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar reuniões: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao procurar reuniões: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -99,10 +110,10 @@ async def inserir_reuniao(reuniao: ReuniaoData):
                 reuniao.quantidade_vendida,
                 reuniao.preco_vendido,
                 reuniao.razao_nao_venda,
-            )
+            ),
         )
         conn.commit()
-        return {"message": "Reunião registrada com sucesso!"}
+        return {"message": "Reunião registada com sucesso!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -122,10 +133,11 @@ async def listar_produtos():
             return {"message": "Nenhum produto encontrado."}
         return produtos
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar produtos: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao procurar produtos: {e}")
     finally:
         cursor.close()
         conn.close()
+
 
 # Endpoint para inserir produto
 @app.post("/produtos")
@@ -138,10 +150,10 @@ async def inserir_produto(produto: ProdutoData):
             INSERT INTO produtos (ref)
             VALUES (%s)
             """,
-            (produto.ref,)
+            (produto.ref,),
         )
         conn.commit()
-        return {"message": "Produto registrado com sucesso!"}
+        return {"message": "Produto registado com sucesso!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

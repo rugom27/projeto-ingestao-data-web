@@ -11,11 +11,12 @@ st.title("Gestão de Reuniões e Vendas")
 # Placeholder para mensagens
 status_placeholder = st.empty()
 
+
 # Função para carregar dados com barra de progresso
 def fetch_data_with_progress(endpoint):
     status_placeholder.text("Carregando dados...")
     progress_bar = st.progress(0)
-    
+
     try:
         response = requests.get(f"{BACKEND_URL}/{endpoint}")
         response.raise_for_status()
@@ -29,6 +30,7 @@ def fetch_data_with_progress(endpoint):
         status_placeholder.text(f"Erro ao carregar dados: {e}")
         return []
 
+
 # Carregar dados de clientes e reuniões
 clientes = fetch_data_with_progress("clientes")
 
@@ -36,19 +38,25 @@ clientes = fetch_data_with_progress("clientes")
 st.header("Clientes")
 if clientes:
     cliente_options = {cliente["id"]: cliente["name"] for cliente in clientes}
-    cliente_id = st.selectbox("Selecione o cliente", options=cliente_options.keys(), format_func=lambda x: cliente_options[x])
+    cliente_id = st.selectbox(
+        "Selecione o cliente",
+        options=cliente_options.keys(),
+        format_func=lambda x: cliente_options[x],
+    )
 
     # Buscar reuniões anteriores do cliente
     if cliente_id:
         try:
-            reunioes_response = requests.get(f"{BACKEND_URL}/reunioes?cliente_id={cliente_id}")
+            reunioes_response = requests.get(
+                f"{BACKEND_URL}/reunioes?cliente_id={cliente_id}"
+            )
             reunioes_response.raise_for_status()
             reunioes_cliente = reunioes_response.json()
             if reunioes_cliente:
                 st.subheader("Reuniões anteriores do cliente")
                 st.table(reunioes_cliente)
             else:
-                st.info("Este cliente não tem reuniões registradas.")
+                st.info("Este cliente não tem reuniões registadas.")
         except requests.exceptions.RequestException as e:
             st.error(f"Erro ao procurar reuniões: {e}")
 else:
@@ -102,7 +110,11 @@ if houve_venda == "Sim":
 
     if produtos:
         produto_options = {produto["id"]: produto["ref"] for produto in produtos}
-        produto_id = st.selectbox("Selecione o Produto", options=produto_options.keys(), format_func=lambda x: produto_options[x])
+        produto_id = st.selectbox(
+            "Selecione o Produto",
+            options=produto_options.keys(),
+            format_func=lambda x: produto_options[x],
+        )
     else:
         produto_id = None
 
@@ -119,8 +131,10 @@ if houve_venda == "Sim":
                 st.error(f"Erro ao adicionar produto: {e}")
 
     quantidade = st.number_input("Quantidade Vendida", min_value=1, step=1)
-    valor_manual = st.number_input("Valor Vendido (Manual)", min_value=0.0, format="%.2f")
-    valor_calculado = quantidade * valor_manual 
+    valor_manual = st.number_input(
+        "Valor Vendido (Manual)", min_value=0.0, format="%.2f"
+    )
+    valor_calculado = quantidade * valor_manual
     st.text(f"Valor calculado (sugestão): {valor_calculado:.2f} EUR")
 
 elif houve_venda == "Não":
@@ -130,7 +144,7 @@ st.header("Submeter Dados")
 if st.button("Registar Reunião"):
     # Garantir que o cliente_id é válido
     if cliente_id is None:
-        st.error("Por favor, selecione um cliente antes de registrar a reunião.")
+        st.error("Por favor, selecione um cliente antes de registar a reunião.")
     else:
         # Construção inicial do JSON
         reuniao_data = {
@@ -146,30 +160,33 @@ if st.button("Registar Reunião"):
             if produto_id is None or quantidade <= 0 or valor_manual <= 0:
                 st.error("Por favor, preencha todos os campos relacionados à venda.")
             else:
-                reuniao_data.update({
-                    "produto_id": produto_id,
-                    "quantidade_vendida": quantidade,
-                    "preco_vendido": valor_manual,
-                    "razao_nao_venda": None,
-                })
+                reuniao_data.update(
+                    {
+                        "produto_id": produto_id,
+                        "quantidade_vendida": quantidade,
+                        "preco_vendido": valor_manual,
+                        "razao_nao_venda": None,
+                    }
+                )
         elif houve_venda == "Não":
             # Garantir que a razão da não venda está preenchida
             if not razao_nao_venda.strip():
                 st.error("Por favor, preencha a razão pela qual não houve venda.")
             else:
-                reuniao_data.update({
-                    "produto_id": None,
-                    "quantidade_vendida": None,
-                    "preco_vendido": None,
-                    "razao_nao_venda": razao_nao_venda.strip(),
-                })
+                reuniao_data.update(
+                    {
+                        "produto_id": None,
+                        "quantidade_vendida": None,
+                        "preco_vendido": None,
+                        "razao_nao_venda": razao_nao_venda.strip(),
+                    }
+                )
 
         # Enviar somente se todos os dados forem válidos
         st.write(reuniao_data)  # DEBUG: Verificar o JSON gerado no frontend
         try:
             response = requests.post(f"{BACKEND_URL}/reunioes", json=reuniao_data)
             response.raise_for_status()
-            st.success("Reunião registrada com sucesso!")
+            st.success("Reunião registada com sucesso!")
         except requests.exceptions.RequestException as e:
-            st.error(f"Erro ao registrar reunião: {e}")
-
+            st.error(f"Erro ao registar reunião: {e}")
