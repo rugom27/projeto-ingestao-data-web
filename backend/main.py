@@ -114,7 +114,7 @@ async def listar_reunioes(cliente_id: int):
 
 # Endpoint para inserir reunião
 @app.post("/reunioes")
-async def inserir_reuniao(reuniao: ReuniaoData):
+async def inserir_reuniao(reuniao: dict):
     print("teste1")
     print(reuniao)
     print(reuniao.cliente_id)
