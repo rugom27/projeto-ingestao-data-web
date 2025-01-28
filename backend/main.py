@@ -52,6 +52,7 @@ class ProdutoData(BaseModel):
 # Endpoint para listar clientes
 @app.get("/clientes")
 async def listar_clientes():
+    print("Hello world")
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
