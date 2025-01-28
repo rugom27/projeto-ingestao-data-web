@@ -34,14 +34,36 @@ def get_db_connection():
 
 # Modelo de dados para a reunião
 class ReuniaoData(BaseModel):
-    cliente_id: int
-    data_reuniao: str
-    descricao: str
-    houve_venda: str
-    produto_id: int = None
-    quantidade_vendida: int = None
-    preco_vendido: float = None
-    razao_nao_venda: str = None
+    def __init__(
+        self,
+        cliente_id: int,
+        data_reuniao: str,
+        descricao: str,
+        houve_venda: str,
+        produto_id: int = None,
+        quantidade_vendida: int = None,
+        preco_vendido: float = None,
+        razao_nao_venda: str = None,
+    ):
+        self.cliente_id = cliente_id
+        self.data_reuniao = data_reuniao
+        self.descricao = descricao
+        self.houve_venda = houve_venda
+        self.produto_id = produto_id
+        self.quantidade_vendida = quantidade_vendida
+        self.preco_vendido = preco_vendido
+        self.razao_nao_venda = razao_nao_venda
+
+    # Empty constructor
+    def __init__(self):
+        self.cliente_id = None
+        self.data_reuniao = None
+        self.descricao = None
+        self.houve_venda = None
+        self.produto_id = None
+        self.quantidade_vendida = None
+        self.preco_vendido = None
+        self.razao_nao_venda = None
 
 
 # Modelo de dados para o produto
@@ -92,7 +114,7 @@ async def listar_reunioes(cliente_id: int):
 
 # Endpoint para inserir reunião
 @app.post("/reunioes")
-async def inserir_reuniao(reuniao):
+async def inserir_reuniao(reuniao: ReuniaoData):
     print("teste1")
     print(reuniao)
     print(reuniao.cliente_id)

@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import time
+from ..backend.main import ClienteData, ProdutoData, ReuniaoData
 
 # URL do backend
 BACKEND_URL = "https://projeto-ingestao-data-web.onrender.com"
@@ -146,13 +147,12 @@ if st.button("Registar Reunião"):
     if cliente_id is None:
         st.error("Por favor, selecione um cliente antes de registar a reunião.")
     else:
+        reuniao_data = ReuniaoData()
         # Construção inicial do JSON
-        reuniao_data = {
-            "cliente_id": cliente_id,
-            "data_reuniao": str(data_reuniao),
-            "descricao": descricao_reuniao,
-            "houve_venda": houve_venda,
-        }
+        reuniao_data.cliente_id = cliente_id
+        reuniao_data.data_reuniao = str(data_reuniao)
+        reuniao_data.descricao = descricao_reuniao
+        reuniao_data.houve_venda = houve_venda
 
         # Dados adicionais dependendo de "houve_venda"
         if houve_venda == "Sim":
@@ -160,29 +160,18 @@ if st.button("Registar Reunião"):
             if produto_id is None or quantidade <= 0 or valor_manual <= 0:
                 st.error("Por favor, preencha todos os campos relacionados à venda.")
             else:
-                reuniao_data.update(
-                    {
-                        "produto_id": produto_id,
-                        "quantidade_vendida": quantidade,
-                        "preco_vendido": valor_manual,
-                        "razao_nao_venda": None,
-                    }
-                )
+                reuniao_data.produto_id = produto_id
+                reuniao_data.quantidade_vendida = quantidade
+                reuniao_data.preco_vendido = valor_manual
+                reuniao_data.razao_nao_venda = None
+
         elif houve_venda == "Não":
             # Garantir que a razão da não venda está preenchida
             if not razao_nao_venda.strip():
                 st.error("Por favor, preencha a razão pela qual não houve venda.")
             else:
-                reuniao_data.update(
-                    {
-                        "produto_id": None,
-                        "quantidade_vendida": None,
-                        "preco_vendido": None,
-                        "razao_nao_venda": razao_nao_venda.strip(),
-                    }
-                )
-
-        # Enviar somente se todos os dados forem válidos
+                reuniao_data.razao_nao_venda = razao_nao_venda.strip()
+                # Enviar somente se todos os dados forem válidos
         st.write(reuniao_data)  # DEBUG: Verificar o JSON gerado no frontend
         try:
             response = requests.post(f"{BACKEND_URL}/reunioes", json=reuniao_data)
